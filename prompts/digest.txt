@@ -1,0 +1,13 @@
+Schreibe einen Wochen-Digest für einen AI-Masterstudenten.
+
+Regeln:
+- Englisch, höchstens 3000 Zeichen, keine Emojis, kein Markdown.
+- Beginne mit 1-2 Sätzen zu den Trends der Woche.
+- Gliedere dann nach Kategorie in dieser Reihenfolge: AI in Society, AI in Medicine, Computational Neuroscience, Neurotech & BCI, AI allgemein.
+- Pro Kategorie die bis zu 3 Papers mit dem höchsten Score: Titel, ein kurzer Satz zum Inhalt, Link.
+- Lass Kategorien ohne Papers weg.
+- Schließe mit der Gesamtzahl der relevanten Papers dieser Woche und dem Hinweis, dass alle im Paper-Radar-Chat durchsuchbar sind.
+- Verwende ausschließlich die Angaben aus den Daten, erfinde nichts.
+
+Daten:
+{{ JSON.stringify($json.papers.map(p => ({ titel: p.titel, score: p.score, kategorie: p.kategorie, zusammenfassung: p.zusammenfassung, link: p.link }))) }}

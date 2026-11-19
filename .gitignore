@@ -1,0 +1,7 @@
+# Eigene, unbereinigte Exporte aus n8n nie committen
+export-*.json
+*.export.json
+
+# Lokales
+.env
+.DS_Store

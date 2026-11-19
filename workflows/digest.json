@@ -1,0 +1,272 @@
+{
+  "name": "Weekly Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        64
+      ],
+      "id": "9a3a30df-bec9-4620-b0b6-d4ab38ba2a71",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -128
+      ],
+      "id": "78ef4820-3a3c-4cd2-b024-f3cb2084ceed",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "zBlJjvUCXJDfVSk9",
+          "mode": "list",
+          "cachedResultName": "papers",
+          "cachedResultUrl": "/projects/3bp7lkS2gdC5iIh4/datatables/zBlJjvUCXJDfVSk9"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "score",
+              "condition": "gte",
+              "keyValue": "7"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        -32
+      ],
+      "id": "844ee8d1-669c-4968-b896-d3e0a2bd8ec5",
+      "name": "Relevante Papers holen"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "2c5f163d-16b8-4a55-81af-d8255225e1f8",
+              "leftValue": "={{ $json.erfasst }}",
+              "rightValue": "={{ $now.minus({ days: 7 }).toISO() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.4,
+      "position": [
+        448,
+        -32
+      ],
+      "id": "aa53cb52-b446-4efa-8386-0ef230f90514",
+      "name": "Nur diese Woche"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "papers",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -32
+      ],
+      "id": "990676d9-ad42-4d35-809f-ebc6e92a86eb",
+      "name": "Alle zusammenfassen"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Schreibe einen Wochen-Digest für einen AI-Masterstudenten.\n\nRegeln:\n- Englisch, höchstens 3000 Zeichen, keine Emojis, kein Markdown.\n- Beginne mit 1-2 Sätzen zu den Trends der Woche.\n- Gliedere dann nach Kategorie in dieser Reihenfolge: AI in Society, AI in Medicine, Computational Neuroscience, Neurotech & BCI, AI allgemein.\n- Pro Kategorie die bis zu 3 Papers mit dem höchsten Score: Titel, ein kurzer Satz zum Inhalt, Link.\n- Lass Kategorien ohne Papers weg.\n- Schließe mit der Gesamtzahl der relevanten Papers dieser Woche und dem Hinweis, dass alle im Paper-Radar-Chat durchsuchbar sind.\n- Verwende ausschließlich die Angaben aus den Daten, erfinde nichts.\n\nDaten:\n{{ JSON.stringify($json.papers.map(p => ({ titel: p.titel, score: p.score, kategorie: p.kategorie, zusammenfassung: p.zusammenfassung, link: p.link }))) }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        896,
+        -32
+      ],
+      "id": "3f56614e-1f2e-4ed5-bb71-689da7dccc9f",
+      "name": "Digest schreiben"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-5-5",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 5.5"
+        },
+        "options": {
+          "maxTokensToSample": 10000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        976,
+        208
+      ],
+      "id": "1f302f5b-86c9-410e-8944-bc6713131de2",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "DEINE_CHAT_ID",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        -32
+      ],
+      "id": "72af3650-585b-4ed7-b23a-41a7281e7b37",
+      "name": "Digest senden",
+      "credentials": {
+        "telegramApi": {
+          "name": "paper_radar_bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Relevante Papers holen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Relevante Papers holen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Relevante Papers holen": {
+      "main": [
+        [
+          {
+            "node": "Nur diese Woche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nur diese Woche": {
+      "main": [
+        [
+          {
+            "node": "Alle zusammenfassen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alle zusammenfassen": {
+      "main": [
+        [
+          {
+            "node": "Digest schreiben",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Digest schreiben",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Digest schreiben": {
+      "main": [
+        [
+          {
+            "node": "Digest senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "84dedc39-ea3c-455e-886f-3fac6f590dfd",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "eoVzhE6BNwjzwGVa",
+  "tags": []
+}

@@ -1,0 +1,184 @@
+{
+  "name": "Paper-Radar Chat",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ce31ddd6-21eb-4300-bc46-d2bc288fa7ea",
+      "name": "Chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Du bist ein Recherche-Assistent für einen AI-Masterstudenten.\nDu beantwortest Fragen ausschließlich auf Basis der Papers, die das Tool paper_suche liefert.\n\nRegeln:\n- Nutze für jede inhaltliche Frage zuerst paper_suche. Formuliere die Suchanfrage auf Englisch, weil die Abstracts englisch sind.\n- Nenne zu jeder Aussage das Paper mit Titel und Link.\n- Wenn die gefundenen Papers die Frage nicht beantworten, sag das offen. Ergänze nichts aus deinem Allgemeinwissen, ohne es als solches zu kennzeichnen.\n- Antworte auf Englisch, knapp und strukturiert."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "104ea663-e17c-42c8-973e-b82b66d1e646",
+      "name": "Paper-Assistent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-5-5",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 5.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        96,
+        208
+      ],
+      "id": "097c9293-d6f2-4459-bfa9-369efb11b07e",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 8
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        208
+      ],
+      "id": "625906d0-89ba-4ab3-907f-03fe3cd3c215",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Durchsucht die gespeicherten wissenschaftlichen Papers (Abstracts) nach Bedeutung. Eingabe: eine Suchanfrage auf Englisch. Liefert die passendsten Papers mit Titel und Link.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "papers",
+          "mode": "list",
+          "cachedResultName": "papers"
+        },
+        "topK": 5,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.4,
+      "position": [
+        592,
+        16
+      ],
+      "id": "298d4d7b-44c7-43a1-bfdc-15138f505b8d",
+      "name": "paper_suche",
+      "credentials": {
+        "qdrantApi": {
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        688,
+        224
+      ],
+      "id": "5b213387-bac2-45b5-ac78-33e822e56759",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "name": "Ollama account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chat": {
+      "main": [
+        [
+          {
+            "node": "Paper-Assistent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Paper-Assistent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Paper-Assistent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "paper_suche": {
+      "ai_tool": [
+        [
+          {
+            "node": "Paper-Assistent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "paper_suche",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b32e6b7e-98b0-4f09-94dc-aecda3e72230",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "y6V2OfJ4deroZm1v",
+  "tags": []
+}

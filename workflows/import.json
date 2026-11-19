@@ -1,0 +1,832 @@
+{
+  "name": "Paper-Radar Import",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "3bc0d79a-925a-410e-81bc-0a2ddbb16003",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://export.arxiv.org/api/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search_query",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "max_results",
+              "value": "={{ $json.max }}"
+            },
+            {
+              "name": "sortBy",
+              "value": "submittedDate"
+            },
+            {
+              "name": "sortOrder",
+              "value": "descending"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3100
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "639b2dff-23e0-4d26-88c1-1873fbb41c5d",
+      "name": "arXiv abrufen"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ein Item pro Thema; der HTTP Request läuft dann einmal pro Item\nconst themen = [\n  { thema: 'AI allgemein', max: 40,\n    query: 'cat:cs.AI' },\n  { thema: 'AI in Society', max: 30,\n    query: '(cat:cs.CY OR cat:cs.HC) AND (abs:AI OR abs:\"machine learning\" OR abs:\"language model\")' },\n  { thema: 'AI in Medicine', max: 30,\n    query: '(cat:cs.AI OR cat:cs.LG OR cat:cs.CV OR cat:eess.IV) AND (abs:clinical OR abs:medical OR abs:patient OR abs:healthcare)' },\n  { thema: 'Computational Neuroscience', max: 30,\n    query: 'cat:q-bio.NC' },\n  { thema: 'Neurotech & BCI', max: 20,\n    query: 'abs:\"brain-computer interface\" OR abs:\"brain-machine interface\" OR abs:neurotechnology OR abs:\"neural interface\" OR (cat:eess.SP AND abs:EEG)' },\n];\n\n// Nur Papers der letzten 7 Tage (arXiv-Format JJJJMMTTHHMM, GMT)\nconst fmt = d => d.toISOString().slice(0, 16).replace(/[-T:]/g, '');\nconst bis = new Date();\nconst von = new Date(bis.getTime() - 7 * 24 * 60 * 60 * 1000);\nconst zeitraum = ` AND submittedDate:[${fmt(von)} TO ${fmt(bis)}]`;\n\nreturn themen.map(t => ({ json: { ...t, query: `(${t.query})${zeitraum}` } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "c1ec50af-6b8d-468a-a4d5-f4de51b10ec8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        672,
+        0
+      ],
+      "id": "7b924e61-a591-41ba-b9d4-dd262e3d6f75",
+      "name": "XML to JSON"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "feed.entry",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "8e30b963-9350-44a8-9437-2224d8be05ec",
+      "name": "In Papers splitten"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f19c552f-98cb-450d-89c9-401a9b04098f",
+              "name": "arxiv_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "8d2bf1bb-7176-4edb-821f-ce5a697ccabe",
+              "name": "titel",
+              "value": "={{ $json.title.replace(/\\s+/g, ' ').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "21709944-b458-4f54-91df-692372375d51",
+              "name": "veroeffentlicht",
+              "value": "={{ $json.published }}",
+              "type": "string"
+            },
+            {
+              "id": "32ed9f5f-b003-4b45-99e8-d02bc1faccbc",
+              "name": "link",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "0a164ff4-3224-4639-b7e4-e984fd0c6582",
+              "name": "autoren",
+              "value": "={{ [].concat($json.author || []).map(a => a.name || a).join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "224e0ba6-17dc-42a8-ba8d-b260875808a6",
+              "name": "abstract",
+              "value": "={{ $json.summary.replace(/\\s+/g, ' ').trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        32,
+        224
+      ],
+      "id": "f74c0f89-4543-4eec-a9f8-b0d90df73eb6",
+      "name": "Felder aufräumen"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "arxiv_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        256,
+        224
+      ],
+      "id": "dbb13463-16de-4a4e-a399-08433f388e9b",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Du filterst wissenschaftliche Papers für einen AI-Masterstudenten an der TUM.\n\nDie relevanten Themen:\n1. AI in Society: Human-AI Interaction, Vertrauen in KI, Bias, Wahrnehmung KI-generierter Inhalte, Regulierung und gesellschaftliche Folgen\n2. AI in Medicine: KI in Diagnostik, Klinik und Gesundheitsversorgung\n3. Computational Neuroscience: Modelle neuronaler Prozesse, Lernen und Kognition, Verbindung von Neurowissenschaft und KI\n4. Neurotech & BCI: Brain-Computer-Interfaces, EEG und Neuroimaging mit KI, neuronale Implantate\n5. AI allgemein: wichtige Entwicklungen bei Sprachmodellen, Agenten, Evaluation und Sicherheit von KI\n\nBewertung:\n- 8-10: zentral für eines der Themen 1-4 oder eine wichtige Entwicklung zu Thema 5\n- 5-7: berührt ein Thema nur am Rand, oder ein solides, aber sehr spezielles Paper zu Thema 5\n- 0-4: kein Bezug, etwa reine Hardware, Robotik-Steuerung oder Mathematik ohne Anwendung\n\nBewerte dieses Paper:\nTitel: {{ $json.titel }}\nAbstract: {{ $json.abstract }}\n\nGib zurück:\n- score: Relevanz 0-10 (ganze Zahl)\n- kategorie: genau eine von \"AI in Society\", \"AI in Medicine\", \"Computational Neuroscience\", \"Neurotech & BCI\", \"AI allgemein\", \"Sonstiges\"\n- zusammenfassung: 2-3 Sätze auf Englisch, was untersucht wurde und was herauskam",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        704,
+        224
+      ],
+      "id": "e46fa4b6-8347-492f-b861-ae65b3be7345",
+      "name": "Relevanz einordnen",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-5-5",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 5.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        704,
+        368
+      ],
+      "id": "2d01e15e-0830-48a9-bb35-7e8eba2d5de8",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"score\": 8, \"kategorie\": \"AI in Society\", \"zusammenfassung\": \"Die Studie untersucht ...\"}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        384
+      ],
+      "id": "644e1f99-4dc2-41b9-932b-66947487aae1",
+      "name": "Structured Output Parser",
+      "retryOnFail": true,
+      "waitBetweenTries": 2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "deb3f302-68a2-4f9a-a869-5fe908318bd7",
+              "name": "arxiv_id",
+              "value": "={{ $('Nur neue Papers').item.json.arxiv_id }}",
+              "type": "string"
+            },
+            {
+              "id": "08f5d83f-6b2d-4420-b948-67342d8dd59b",
+              "name": "titel",
+              "value": "={{ $('Nur neue Papers').item.json.titel }}",
+              "type": "string"
+            },
+            {
+              "id": "74cf50b3-1142-4468-be4f-d62ecd6f6e86",
+              "name": "autoren",
+              "value": "={{ $('Nur neue Papers').item.json.autoren }}",
+              "type": "string"
+            },
+            {
+              "id": "7094cff3-0af6-4500-8df4-f868167e22f7",
+              "name": "abstract",
+              "value": "={{ $('Nur neue Papers').item.json.abstract }}",
+              "type": "string"
+            },
+            {
+              "id": "583184c0-5cf9-4071-8993-521a0fe65be9",
+              "name": "veroeffentlicht",
+              "value": "={{ $('Nur neue Papers').item.json.veroeffentlicht }}",
+              "type": "string"
+            },
+            {
+              "id": "28c64cf3-2ce5-4bfc-894d-8d178c10d642",
+              "name": "link",
+              "value": "={{ $('Nur neue Papers').item.json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "da5b1c5b-d42c-4ebd-8f41-5ea04f63a8ef",
+              "name": "score",
+              "value": "={{ $json.output.score }}",
+              "type": "number"
+            },
+            {
+              "id": "427ccb25-2b57-4d24-a57e-3707bdff2968",
+              "name": "kategorie",
+              "value": "={{ $json.output.kategorie }}",
+              "type": "string"
+            },
+            {
+              "id": "400fe660-45ab-4163-bb58-2352d6886b1a",
+              "name": "zusammenfassung",
+              "value": "={{ $json.output.zusammenfassung }}",
+              "type": "string"
+            },
+            {
+              "id": "272db614-9353-41dc-8eb0-1c1c9873c99c",
+              "name": "erfasst",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        64,
+        528
+      ],
+      "id": "34eada6c-fad6-45a6-9f56-3d63afc5f139",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "zBlJjvUCXJDfVSk9",
+          "mode": "list",
+          "cachedResultName": "papers",
+          "cachedResultUrl": "/projects/3bp7lkS2gdC5iIh4/datatables/zBlJjvUCXJDfVSk9"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "arxiv_id",
+              "keyValue": "={{ $json.arxiv_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        224
+      ],
+      "id": "45725e87-a280-4743-9403-d91248dd45d6",
+      "name": "Nur neue Papers"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "zBlJjvUCXJDfVSk9",
+          "mode": "list",
+          "cachedResultName": "papers",
+          "cachedResultUrl": "/projects/3bp7lkS2gdC5iIh4/datatables/zBlJjvUCXJDfVSk9"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "arxiv_id": "={{ $json.arxiv_id }}",
+            "titel": "={{ $json.titel }}",
+            "autoren": "={{ $json.autoren }}",
+            "veroeffentlicht": "={{ $json.veroeffentlicht }}",
+            "link": "={{ $json.link }}",
+            "score": "={{ $json.score }}",
+            "kategorie": "={{ $json.kategorie }}",
+            "zusammenfassung": "={{ $json.zusammenfassung }}",
+            "erfasst": "={{ $json.erfasst }}",
+            "abstract": "={{ $json.abstract }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "arxiv_id",
+              "displayName": "arxiv_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "titel",
+              "displayName": "titel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "autoren",
+              "displayName": "autoren",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "veroeffentlicht",
+              "displayName": "veroeffentlicht",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "kategorie",
+              "displayName": "kategorie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "zusammenfassung",
+              "displayName": "zusammenfassung",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "erfasst",
+              "displayName": "erfasst",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "abstract",
+              "displayName": "abstract",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        288,
+        528
+      ],
+      "id": "40e4f596-aacd-4b69-86d5-5c0734941033",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "932c9906-1d48-467a-9018-03f1244030bb",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 6,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.4,
+      "position": [
+        512,
+        528
+      ],
+      "id": "429dbfb2-42e3-422e-b01d-d931276d34c1",
+      "name": "Nur relevante"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "papers",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.4,
+      "position": [
+        736,
+        528
+      ],
+      "id": "be7bd27b-f1b8-450e-ac8b-c82e31a967c9",
+      "name": "In Qdrant einbetten",
+      "credentials": {
+        "qdrantApi": {
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        720,
+        704
+      ],
+      "id": "a3ac862b-9195-43df-9ed2-d4e44044e9a6",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "=Titel: {{ $json.titel }}\nAutoren: {{ $json.autoren }}\nKategorie: {{ $json.kategorie }}\nAbstract: {{ $json.abstract }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "titel",
+                "value": "={{ $json.titel }}"
+              },
+              {
+                "name": "link",
+                "value": "={{ $json.link }}"
+              },
+              {
+                "name": "veroeffentlicht",
+                "value": "={{ $json.veroeffentlicht }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        704
+      ],
+      "id": "2879bbae-77c1-4328-a174-b86e2230cb43",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 4000,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        992,
+        912
+      ],
+      "id": "1c7486d0-db4c-4dd1-afaa-3f552b6d7088",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -32,
+        -128
+      ],
+      "id": "4bf7307e-fc71-461a-9d6a-af51ed5b665c",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "arXiv abrufen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "arXiv abrufen": {
+      "main": [
+        [
+          {
+            "node": "XML to JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML to JSON": {
+      "main": [
+        [
+          {
+            "node": "In Papers splitten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "In Papers splitten": {
+      "main": [
+        [
+          {
+            "node": "Felder aufräumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Felder aufräumen": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Nur neue Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Relevanz einordnen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Relevanz einordnen",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Relevanz einordnen": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nur neue Papers": {
+      "main": [
+        [
+          {
+            "node": "Relevanz einordnen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Nur relevante",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nur relevante": {
+      "main": [
+        [
+          {
+            "node": "In Qdrant einbetten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "In Qdrant einbetten",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "In Qdrant einbetten",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a97b5a94-bee7-4fed-bbc5-88d1bd131b02",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "bGJYgvat8CTq3Swp",
+  "tags": []
+}
